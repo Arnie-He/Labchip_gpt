@@ -1,117 +1,124 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
-import React from 'react';
-import type {PropsWithChildren} from 'react';
+import React, {useState} from 'react';
 import {
   SafeAreaView,
-  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   useColorScheme,
   View,
+  TextInput,
+  Button,
+  FlatList,
 } from 'react-native';
+import {Colors} from 'react-native/Libraries/NewAppScreen';
+import axios from 'axios';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
-
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
-
-function Section({children, title}: SectionProps): JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
+type Message = {
+  id: string;
+  text: string;
+  sender: 'user' | 'bot';
+};
 
 function App(): JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
-
   const backgroundStyle = {
     backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
   };
 
+  const [input, setInput] = useState('');
+  const [messages, setMessages] = useState<Message[]>([]);
+
+  const sendMessage = () => {
+    if (input.trim()) {
+      setMessages([
+        ...messages,
+        {id: `${Date.now()}`, text: input, sender: 'user'},
+      ]);
+      setInput('');
+      axios
+        .post('http://127.0.0.1:5000/retrieve', {query: input})
+        .then(response => {
+          setMessages(prev => [
+            ...prev,
+            {
+              id: `${Date.now() + 1}`,
+              text: response.data.response,
+              sender: 'bot',
+            },
+          ]);
+        })
+        .catch(error => {
+          console.error(error);
+          // Handle the error appropriately in your app
+        });
+    }
+  };
+
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
+    <SafeAreaView style={[styles.container, backgroundStyle]}>
+      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+      <FlatList
+        data={messages}
+        keyExtractor={item => item.id}
+        renderItem={({item}) => (
+          <View
+            style={
+              item.sender === 'user' ? styles.userBubble : styles.botBubble
+            }>
+            <Text style={styles.text}>{item.text}</Text>
+          </View>
+        )}
       />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
+      <View style={styles.inputContainer}>
+        <TextInput
+          style={styles.input}
+          placeholder="Type a message"
+          value={input}
+          onChangeText={text => setInput(text)}
+        />
+        <Button title="Send" onPress={sendMessage} />
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
+  container: {
+    flex: 1,
+    justifyContent: 'flex-end',
   },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
+  userBubble: {
+    backgroundColor: '#d1e7dd',
+    marginBottom: 10,
+    marginLeft: '25%',
+    marginRight: '5%',
+    padding: 10,
+    borderRadius: 10,
   },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
+  botBubble: {
+    backgroundColor: '#d2e2e2',
+    marginBottom: 10,
+    marginLeft: '5%',
+    marginRight: '25%',
+    padding: 10,
+    borderRadius: 10,
   },
-  highlight: {
-    fontWeight: '700',
+  text: {
+    fontSize: 16,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  input: {
+    flex: 1,
+    height: 40,
+    borderColor: 'gray',
+    borderWidth: 1,
+    marginRight: 10,
+    paddingLeft: 10,
+    borderRadius: 10,
   },
 });
 
